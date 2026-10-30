@@ -1,0 +1,35 @@
+name: Daily Data Pipeline Execution
+
+on:
+  schedule:
+    # Runs everyday at 06:00 UTC
+    - cron: '0 6 * * *'
+  workflow_dispatch: # Allows manual trigger from GitHub UI
+
+jobs:
+  run-pipeline:
+    name: Execute Ingestion & Warehouse Modeling
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+
+    - name: Set up Python
+      uses: actions/setup-python@v5
+      with:
+        python-version: '3.12'
+        cache: 'pip'
+
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install -r requirements.txt
+
+    - name: Execute End-to-End Pipeline
+      run: |
+        python pipeline.py
+
+    - name: Verify Warehouse Health
+      run: |
+        python -c "import duckdb; con = duckdb.connect('data/warehouse.duckdb', read_only=True); assert con.execute('SELECT count(*) FROM silver.jobs').fetchone()[0] > 0; print('Warehouse health check passed!')"
